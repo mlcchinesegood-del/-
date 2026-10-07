@@ -1,0 +1,909 @@
+    <nav class="flex space-x-2 bg-[#EAE5D9] p-1.5 rounded-2xl">
+      <button onclick="switchTab('mood')" id="tab-mood" class="tab-btn px-5 py-2 rounded-xl text-base font-semibold transition-all duration-200 bg-[#8A9A86] text-white shadow-sm">
+        😊 心情打卡
+      </button>
+      <button onclick="switchTab('groups')" id="tab-groups" class="tab-btn px-5 py-2 rounded-xl text-base font-semibold transition-all duration-200 text-[#3D4035] hover:bg-white/50">
+        🧩 班級分組
+      </button>
+      <button onclick="switchTab('lottery')" id="tab-lottery" class="tab-btn px-5 py-2 rounded-xl text-base font-semibold transition-all duration-200 text-[#3D4035] hover:bg-white/50">
+        🎯 課堂抽籤
+      </button>
+      <button onclick="switchTab('timer')" id="tab-timer" class="tab-btn px-5 py-2 rounded-xl text-base font-semibold transition-all duration-200 text-[#3D4035] hover:bg-white/50">
+        ⏱️ 課堂計時
+      </button>
+    </nav>
+
+    <!-- 名單與出缺席管理按鈕 -->
+    <div class="flex items-center space-x-3">
+      <span id="present-count-badge" class="text-sm px-3 py-1 bg-[#8A9A86]/20 text-[#6E7E6A] font-medium rounded-full">
+        出席：-- / --
+      </span>
+      <button onclick="openRosterModal()" class="px-4 py-2 bg-[#7B8D93] hover:bg-[#68787E] text-white font-medium rounded-xl text-sm transition shadow-sm">
+        ⚙️ 名單與出缺席
+      </button>
+    </div>
+  </header>
+
+  <!-- 主要內容區 -->
+  <main class="flex-1 overflow-auto p-6">
+    
+    <!-- 1. 心情打卡分頁 -->
+    <section id="view-mood" class="h-full flex flex-col">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <h2 class="text-2xl font-bold">早安！今天感覺如何？</h2>
+          <p class="text-sm text-gray-500">點擊自己的座號進行心情簽到，完成後將自動遮蔽內容保護隱私。</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button onclick="togglePrivacyMode()" id="privacy-toggle-btn" class="px-4 py-2 bg-[#D9CAB3] hover:bg-[#C9B9A0] text-[#3D4035] font-semibold rounded-xl text-sm transition">
+            🔒 隱私遮蔽模式：開啟中
+          </button>
+          <button onclick="resetDailyMood()" class="px-3 py-2 border border-gray-300 hover:bg-white text-gray-600 rounded-xl text-sm">
+            重置今日簽到
+          </button>
+        </div>
+      </div>
+
+      <!-- 全班心情概況長條圖 (大屏公開安全顯示) -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#D9CAB3] mb-6 grid grid-cols-5 gap-3 text-center">
+        <div class="p-3 bg-[#F8F9FA] rounded-xl">
+          <div class="text-2xl mb-1">⚡ 活力充沛</div>
+          <div id="stat-energetic" class="text-xl font-bold text-[#C48B71]">0 人</div>
+        </div>
+        <div class="p-3 bg-[#F8F9FA] rounded-xl">
+          <div class="text-2xl mb-1">😊 開心愉悅</div>
+          <div id="stat-happy" class="text-xl font-bold text-[#8A9A86]">0 人</div>
+        </div>
+        <div class="p-3 bg-[#F8F9FA] rounded-xl">
+          <div class="text-2xl mb-1">😌 平靜放鬆</div>
+          <div id="stat-calm" class="text-xl font-bold text-[#7B8D93]">0 人</div>
+        </div>
+        <div class="p-3 bg-[#F8F9FA] rounded-xl">
+          <div class="text-2xl mb-1">🌧️ 疲倦沉重</div>
+          <div id="stat-tired" class="text-xl font-bold text-gray-500">0 人</div>
+        </div>
+        <div class="p-3 bg-[#F8F9FA] rounded-xl">
+          <div class="text-2xl mb-1">🤯 焦慮煩躁</div>
+          <div id="stat-anxious" class="text-xl font-bold text-rose-500">0 人</div>
+        </div>
+      </div>
+
+      <!-- 學生點選簽到網格 -->
+      <div id="mood-roster-grid" class="flex-1 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 overflow-y-auto pr-2 pb-4">
+        <!-- 動態渲染學生卡片 -->
+      </div>
+    </section>
+
+    <!-- 2. 班級分組分頁 -->
+    <section id="view-groups" class="h-full hidden flex flex-col">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#D9CAB3] mb-5">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <label class="font-bold text-gray-700">分組依據：</label>
+            <select id="group-mode" class="border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-sm">
+              <option value="byGroups">固定分成 N 組</option>
+              <option value="bySize">每組固定 N 人</option>
+            </select>
+            <input type="number" id="group-target-num" min="2" max="20" value="4" class="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-center font-bold" />
+          </div>
+
+          <!-- 進階分組規則選擇 -->
+          <div class="flex items-center space-x-5 text-sm">
+            <label class="flex items-center space-x-1.5 cursor-pointer">
+              <input type="checkbox" id="rule-balance-gender" checked class="w-4 h-4 text-[#8A9A86] rounded" />
+              <span>男女均分</span>
+            </label>
+            <label class="flex items-center space-x-1.5 cursor-pointer">
+              <input type="checkbox" id="rule-hetero" checked class="w-4 h-4 text-[#8A9A86] rounded" />
+              <span>異質分組 (依程度S型分配)</span>
+            </label>
+            <label class="flex items-center space-x-1.5 cursor-pointer">
+              <input type="checkbox" id="rule-avoid" checked class="w-4 h-4 text-[#8A9A86] rounded" />
+              <span>啟用黑名單避開同組</span>
+            </label>
+          </div>
+
+          <button onclick="executeGrouping()" class="px-6 py-2.5 bg-[#8A9A86] hover:bg-[#6E7E6A] text-white font-bold rounded-xl shadow transition">
+            🎲 開始智慧分組
+          </button>
+        </div>
+      </div>
+
+      <!-- 分組結果呈現看板 -->
+      <div id="group-result-container" class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-y-auto pb-4">
+        <div class="col-span-full flex items-center justify-center h-48 text-gray-400 border-2 border-dashed border-gray-300 rounded-2xl">
+          請點擊「開始智慧分組」生成小組名單
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 課堂抽籤分頁 -->
+    <section id="view-lottery" class="h-full hidden flex flex-col">
+      <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+        <!-- 抽籤主視覺舞台 -->
+        <div class="lg:col-span-2 bg-white rounded-3xl p-8 border border-[#D9CAB3] shadow-sm flex flex-col items-center justify-center relative">
+          <div class="absolute top-6 left-6 flex items-center space-x-2">
+            <span class="text-sm font-semibold text-gray-500">剩餘未抽名額：</span>
+            <span id="lottery-pool-count" class="text-base font-bold text-[#C48B71]">0</span>
+          </div>
+
+          <!-- 抽籤動畫卡片 -->
+          <div id="lottery-display-card" class="w-72 h-72 sm:w-80 sm:h-80 bg-[#FAF8F5] border-4 border-[#8A9A86] rounded-3xl flex flex-col items-center justify-center shadow-lg transition-transform duration-300">
+            <span id="lottery-seat" class="text-4xl font-bold text-[#7B8D93] mb-2">準備</span>
+            <span id="lottery-name" class="text-5xl font-black text-[#3D4035]">點我抽籤</span>
+          </div>
+
+          <!-- 抽籤控制按鈕 -->
+          <div class="mt-8 flex space-x-4">
+            <button id="lottery-start-btn" onclick="startLotteryDraw()" class="px-10 py-3.5 bg-[#C48B71] hover:bg-[#B0775F] text-white text-xl font-bold rounded-2xl shadow-md transition transform active:scale-95">
+              🎯 開始抽籤
+            </button>
+            <button onclick="resetLotteryPool()" class="px-5 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-2xl transition">
+              🔄 重置抽籤名單
+            </button>
+          </div>
+        </div>
+
+        <!-- 已中籤名單記錄 (抽後自動剔除展示區) -->
+        <div class="bg-white rounded-3xl p-6 border border-[#D9CAB3] shadow-sm flex flex-col">
+          <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+            <h3 class="font-bold text-lg text-[#3D4035]">已抽中同學 (抽後剔除)</h3>
+            <span id="drawn-count-badge" class="text-xs bg-[#7B8D93]/20 text-[#7B8D93] px-2.5 py-1 rounded-full font-bold">0 人</span>
+          </div>
+          <div id="drawn-list-container" class="flex-1 overflow-y-auto space-y-2 pr-1">
+            <!-- 動態加入已抽中名單 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 課堂計時分頁 -->
+    <section id="view-timer" class="h-full hidden flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
+      <div id="timer-box" class="w-full bg-white rounded-3xl p-10 border border-[#D9CAB3] shadow-sm flex flex-col items-center transition-all duration-300">
+        
+        <!-- 模式切換 -->
+        <div class="flex space-x-3 mb-6 bg-[#FAF8F5] p-1.5 rounded-xl border border-gray-200">
+          <button onclick="setTimerMode('countdown')" id="mode-countdown" class="px-5 py-1.5 rounded-lg text-sm font-bold bg-[#8A9A86] text-white">倒數計時</button>
+          <button onclick="setTimerMode('stopwatch')" id="mode-stopwatch" class="px-5 py-1.5 rounded-lg text-sm font-bold text-gray-600 hover:bg-white">碼表正數</button>
+        </div>
+
+        <!-- 倒數快捷鍵 -->
+        <div id="timer-presets" class="flex flex-wrap gap-2 mb-8 justify-center">
+          <button onclick="setPresetTime(60)" class="px-4 py-2 bg-gray-100 hover:bg-[#D9CAB3] rounded-xl text-sm font-semibold transition">1 分鐘</button>
+          <button onclick="setPresetTime(180)" class="px-4 py-2 bg-gray-100 hover:bg-[#D9CAB3] rounded-xl text-sm font-semibold transition">3 分鐘</button>
+          <button onclick="setPresetTime(300)" class="px-4 py-2 bg-gray-100 hover:bg-[#D9CAB3] rounded-xl text-sm font-semibold transition">5 分鐘</button>
+          <button onclick="setPresetTime(600)" class="px-4 py-2 bg-gray-100 hover:bg-[#D9CAB3] rounded-xl text-sm font-semibold transition">10 分鐘</button>
+          <button onclick="customTimePrompt()" class="px-4 py-2 border border-dashed border-gray-300 hover:bg-gray-50 rounded-xl text-sm font-medium">自訂秒數</button>
+        </div>
+
+        <!-- 巨大時間文字 -->
+        <div id="timer-display" class="text-8xl sm:text-9xl font-mono font-black tracking-tight text-[#3D4035] my-2">
+          05:00
+        </div>
+
+        <!-- 進度條 -->
+        <div class="w-full max-w-xl bg-gray-100 h-3 rounded-full mt-6 overflow-hidden">
+          <div id="timer-progress" class="bg-[#8A9A86] h-full w-full transition-all duration-300"></div>
+        </div>
+
+        <!-- 控制按鈕 -->
+        <div class="mt-10 flex space-x-6">
+          <button id="timer-toggle-btn" onclick="toggleTimer()" class="w-36 py-3.5 bg-[#8A9A86] hover:bg-[#6E7E6A] text-white text-lg font-bold rounded-2xl shadow transition">
+            開始
+          </button>
+          <button onclick="resetTimer()" class="w-36 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-lg font-bold rounded-2xl transition">
+            重設
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 學生個人心情打卡彈窗 (大螢幕防窺) -->
+  <div id="mood-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 text-center">
+      <h3 class="text-xl font-bold mb-1" id="mood-modal-title">嗨！請選擇你的心情</h3>
+      <p class="text-xs text-gray-400 mb-6">點選後將立即完成簽到並保護個人內容</p>
+
+      <div class="grid grid-cols-1 gap-3">
+        <button onclick="submitMood('energetic')" class="flex items-center p-3 rounded-2xl border-2 border-gray-100 hover:border-[#C48B71] hover:bg-orange-50 transition text-left">
+          <span class="text-3xl mr-3">⚡</span>
+          <div>
+            <div class="font-bold text-gray-800">活力充沛</div>
+            <div class="text-xs text-gray-400">精神很好，準備好投入課堂！</div>
+          </div>
+        </button>
+        <button onclick="submitMood('happy')" class="flex items-center p-3 rounded-2xl border-2 border-gray-100 hover:border-[#8A9A86] hover:bg-green-50 transition text-left">
+          <span class="text-3xl mr-3">😊</span>
+          <div>
+            <div class="font-bold text-gray-800">開心愉悅</div>
+            <div class="text-xs text-gray-400">心情放鬆愉快，狀態良好。</div>
+          </div>
+        </button>
+        <button onclick="submitMood('calm')" class="flex items-center p-3 rounded-2xl border-2 border-gray-100 hover:border-[#7B8D93] hover:bg-blue-50 transition text-left">
+          <span class="text-3xl mr-3">😌</span>
+          <div>
+            <div class="font-bold text-gray-800">平靜安穩</div>
+            <div class="text-xs text-gray-400">不急不躁，專注於當下。</div>
+          </div>
+        </button>
+        <button onclick="submitMood('tired')" class="flex items-center p-3 rounded-2xl border-2 border-gray-100 hover:border-gray-400 hover:bg-gray-50 transition text-left">
+          <span class="text-3xl mr-3">🌧️</span>
+          <div>
+            <div class="font-bold text-gray-800">疲倦沉重</div>
+            <div class="text-xs text-gray-400">有點累或睡眠不足，需要調適。</div>
+          </div>
+        </button>
+        <button onclick="submitMood('anxious')" class="flex items-center p-3 rounded-2xl border-2 border-gray-100 hover:border-rose-400 hover:bg-rose-50 transition text-left">
+          <span class="text-3xl mr-3">🤯</span>
+          <div>
+            <div class="font-bold text-gray-800">焦慮煩躁</div>
+            <div class="text-xs text-gray-400">有些煩心事，需要一點空間。</div>
+          </div>
+        </button>
+      </div>
+
+      <button onclick="closeMoodModal()" class="mt-5 w-full py-2.5 text-sm text-gray-400 hover:text-gray-600">
+        取消
+      </button>
+    </div>
+  </div>
+
+  <!-- 名單與出缺席設定彈窗 -->
+  <div id="roster-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-gray-100 flex flex-col max-h-[85vh]">
+      <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+        <h3 class="text-lg font-bold text-gray-800">學生名單與請假標記</h3>
+        <button onclick="closeRosterModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="my-4 overflow-y-auto flex-1 pr-1">
+        <div class="mb-4">
+          <label class="block text-xs font-bold text-gray-500 mb-1">
+            快速貼上名單（格式：座號 姓名 性別 程度 黑名單座號，每人一行）
+          </label>
+          <p class="text-xs text-gray-400 mb-2">
+            範例：<code>1 王小明 男 A 2,3</code>（性別填男/女；程度填A/B/C；最後一欄逗號隔開避開同組座號）
+          </p>
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-[11px] text-gray-400">支援直接貼上 Excel 欄位（座號、姓名、性別、程度）</span>
+            <button type="button" onclick="fillSampleRoster()" class="text-xs text-[#8A9A86] hover:underline font-semibold">
+              帶入範例資料
+            </button>
+          </div>
+          <textarea id="roster-import-text" rows="4" class="w-full text-xs font-mono p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#8A9A86] focus:outline-none bg-white" placeholder="請在此貼上名單，例如：&#10;1 王小明 男 A&#10;2 陳小華 女 B&#10;3 李大同 男 A 1"></textarea>
+          <div class="mt-2 flex space-x-2">
+            <button onclick="importRosterFromText()" class="px-5 py-2 bg-[#8A9A86] hover:bg-[#6E7E6A] text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95">
+              📥 匯入並覆寫名單
+            </button>
+            <button onclick="document.getElementById('roster-import-text').value=''" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-xl">
+              清空文字
+            </button>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-100 pt-3">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-xs font-bold text-gray-600">當前班級成員（勾選代表「請假/缺席」，缺席將排除於分組與抽籤）：</span>
+          </div>
+          <div id="roster-table-container" class="space-y-1.5 max-h-56 overflow-y-auto">
+            <!-- 動態生成勾選名單 -->
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-gray-100 flex justify-end">
+        <button onclick="closeRosterModal()" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl">
+          完成關閉
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript 核心應用邏輯 -->
+  <script>
+    // --- 1. 預設名單與資料狀態管理 (localStorage) ---
+    const DEFAULT_STUDENTS = [
+      { id: 1, name: "陳冠宇", gender: "男", level: "A", avoid: [2], absent: false, mood: null },
+      { id: 2, name: "林欣妤", gender: "女", level: "B", avoid: [1], absent: false, mood: null },
+      { id: 3, name: "張家豪", gender: "男", level: "B", avoid: [], absent: false, mood: null },
+      { id: 4, name: "黃子晴", gender: "女", level: "A", avoid: [], absent: false, mood: null },
+      { id: 5, name: "李宇軒", gender: "男", level: "C", avoid: [], absent: false, mood: null },
+      { id: 6, name: "楊若涵", gender: "女", level: "C", avoid: [], absent: false, mood: null },
+      { id: 7, name: "劉又嘉", gender: "男", level: "A", avoid: [], absent: false, mood: null },
+      { id: 8, name: "許雅婷", gender: "女", level: "B", avoid: [], absent: false, mood: null },
+      { id: 9, name: "吳俊宏", gender: "男", level: "B", avoid: [], absent: false, mood: null },
+      { id: 10, name: "周芷嫣", gender: "女", level: "A", avoid: [], absent: false, mood: null },
+      { id: 11, name: "蔡秉修", gender: "男", level: "C", avoid: [], absent: false, mood: null },
+      { id: 12, name: "鄭詠心", gender: "女", level: "C", avoid: [], absent: false, mood: null }
+    ];
+
+    let students = JSON.parse(localStorage.getItem("class_students")) || DEFAULT_STUDENTS;
+    let privacyMode = true; // 預設開啟隱私模式
+    let selectedStudentForMood = null;
+
+    function saveState() {
+      localStorage.setItem("class_students", JSON.stringify(students));
+      updateRosterBadges();
+    }
+
+    function updateRosterBadges() {
+      const active = students.filter(s => !s.absent).length;
+      document.getElementById("present-count-badge").textContent = `出席：${active} / ${students.length}`;
+      renderMoodRoster();
+    }
+
+    // --- 2. Web Audio API 音效生成引擎 (完全不依賴外部檔案) ---
+    const AudioEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+      },
+      playTick() {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.05);
+      },
+      playCheer() {
+        this.init();
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+          gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.08 + 0.3);
+          osc.start(this.ctx.currentTime + idx * 0.08);
+          osc.stop(this.ctx.currentTime + idx * 0.08 + 0.3);
+        });
+      },
+      playAlarm() {
+        this.init();
+        for (let i = 0; i < 3; i++) {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(880, this.ctx.currentTime + i * 0.2);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime + i * 0.2);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + i * 0.2 + 0.15);
+          osc.start(this.ctx.currentTime + i * 0.2);
+          osc.stop(this.ctx.currentTime + i * 0.2 + 0.15);
+        }
+      }
+    };
+
+    // --- 3. 分頁切換 ---
+    function switchTab(tabId) {
+      ['mood', 'groups', 'lottery', 'timer'].forEach(id => {
+        document.getElementById(`view-${id}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-${id}`);
+        btn.classList.remove('bg-[#8A9A86]', 'text-white', 'shadow-sm');
+        btn.classList.add('text-[#3D4035]');
+      });
+      document.getElementById(`view-${tabId}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      activeBtn.classList.add('bg-[#8A9A86]', 'text-white', 'shadow-sm');
+      activeBtn.classList.remove('text-[#3D4035]');
+
+      if (tabId === 'lottery') initLotteryPool();
+      if (tabId === 'mood') renderMoodRoster();
+    }
+
+    // --- 4. 心情打卡模組 (含隱私安全模式) ---
+    function togglePrivacyMode() {
+      privacyMode = !privacyMode;
+      const btn = document.getElementById("privacy-toggle-btn");
+      btn.textContent = privacyMode ? "🔒 隱私遮蔽模式：開啟中" : "🔓 隱私遮蔽模式：已關閉 (教師檢視)";
+      btn.className = privacyMode ? 
+        "px-4 py-2 bg-[#D9CAB3] hover:bg-[#C9B9A0] text-[#3D4035] font-semibold rounded-xl text-sm transition" :
+        "px-4 py-2 bg-rose-100 hover:bg-rose-200 text-rose-800 font-semibold rounded-xl text-sm transition";
+      renderMoodRoster();
+    }
+
+    function renderMoodRoster() {
+      const container = document.getElementById("mood-roster-grid");
+      container.innerHTML = "";
+
+      const moodCounts = { energetic: 0, happy: 0, calm: 0, tired: 0, anxious: 0 };
+
+      students.forEach(s => {
+        if (s.mood) moodCounts[s.mood]++;
+
+        const card = document.createElement("button");
+        card.disabled = s.absent;
+        card.onclick = () => openMoodModal(s);
+        
+        let statusBadge = "";
+        let borderClass = "border-gray-200 bg-white";
+
+        if (s.absent) {
+          borderClass = "border-dashed border-gray-300 bg-gray-50 opacity-40 cursor-not-allowed";
+          statusBadge = `<span class="text-xs text-gray-400">請假</span>`;
+        } else if (s.mood) {
+          if (privacyMode) {
+            borderClass = "border-[#8A9A86] bg-green-50/50";
+            statusBadge = `<span class="text-xs font-bold text-[#6E7E6A]">✓ 已簽到</span>`;
+          } else {
+            // 教師檢視模式顯示具體心情
+            const iconMap = { energetic: '⚡ 活力', happy: '😊 開心', calm: '😌 平靜', tired: '🌧️ 疲倦', anxious: '🤯 焦慮' };
+            statusBadge = `<span class="text-xs font-bold text-gray-700">${iconMap[s.mood]}</span>`;
+          }
+        } else {
+          statusBadge = `<span class="text-xs text-gray-400">未簽到</span>`;
+        }
+
+        card.className = `p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition shadow-sm hover:scale-[1.02] ${borderClass}`;
+        card.innerHTML = `
+          <span class="text-xs text-gray-400 font-mono">#${s.id}</span>
+          <span class="text-lg font-bold text-[#3D4035] my-1">${s.name}</span>
+          ${statusBadge}
+        `;
+        container.appendChild(card);
+      });
+
+      // 更新統計儀表板
+      document.getElementById("stat-energetic").textContent = `${moodCounts.energetic} 人`;
+      document.getElementById("stat-happy").textContent = `${moodCounts.happy} 人`;
+      document.getElementById("stat-calm").textContent = `${moodCounts.calm} 人`;
+      document.getElementById("stat-tired").textContent = `${moodCounts.tired} 人`;
+      document.getElementById("stat-anxious").textContent = `${moodCounts.anxious} 人`;
+    }
+
+    function openMoodModal(student) {
+      selectedStudentForMood = student;
+      document.getElementById("mood-modal-title").textContent = `${student.name}（${student.id}號），今天心情如何？`;
+      document.getElementById("mood-modal").classList.remove("hidden");
+    }
+
+    function closeMoodModal() {
+      document.getElementById("mood-modal").classList.add("hidden");
+      selectedStudentForMood = null;
+    }
+
+    function submitMood(moodKey) {
+      if (!selectedStudentForMood) return;
+      selectedStudentForMood.mood = moodKey;
+      saveState();
+      AudioEngine.playCheer();
+      closeMoodModal();
+      renderMoodRoster();
+    }
+
+    function resetDailyMood() {
+      if (confirm("確定要重設全班今日的心情紀錄嗎？")) {
+        students.forEach(s => s.mood = null);
+        saveState();
+        renderMoodRoster();
+      }
+    }
+
+    // --- 5. 班級分組模組 (規則演算法：男女均分、異質S型、黑名單避開) ---
+    function executeGrouping() {
+      const activeStudents = students.filter(s => !s.absent);
+      if (activeStudents.length < 2) {
+        alert("出席人數過少，無法分組！");
+        return;
+      }
+
+      const mode = document.getElementById("group-mode").value;
+      const targetVal = parseInt(document.getElementById("group-target-num").value) || 4;
+      const balanceGender = document.getElementById("rule-balance-gender").checked;
+      const isHetero = document.getElementById("rule-hetero").checked;
+      const avoidEnabled = document.getElementById("rule-avoid").checked;
+
+      let numGroups = mode === "byGroups" ? targetVal : Math.ceil(activeStudents.length / targetVal);
+      numGroups = Math.max(1, Math.min(numGroups, activeStudents.length));
+
+      let pool = [...activeStudents];
+
+      // 依男女與程度分群或純洗牌
+      let groups = Array.from({ length: numGroups }, () => []);
+
+      if (isHetero) {
+        // 異質分組：先排程度 A -> B -> C，採蛇形分配
+        const levelOrder = { A: 1, B: 2, C: 3 };
+        pool.sort((a, b) => (levelOrder[a.level || 'B'] || 2) - (levelOrder[b.level || 'B'] || 2));
+      } else {
+        pool.sort(() => Math.random() - 0.5);
+      }
+
+      if (balanceGender) {
+        const boys = pool.filter(s => s.gender === "男");
+        const girls = pool.filter(s => s.gender === "女");
+        distributeToGroups(boys, groups);
+        distributeToGroups(girls, groups);
+      } else {
+        distributeToGroups(pool, groups);
+      }
+
+      // 黑名單衝突檢核與簡單換組修正
+      if (avoidEnabled) {
+        resolveConflicts(groups);
+      }
+
+      renderGroups(groups);
+      AudioEngine.playCheer();
+    }
+
+    function distributeToGroups(list, groups) {
+      let gIndex = 0;
+      let forward = true;
+      list.forEach(student => {
+        groups[gIndex].push(student);
+        if (forward) {
+          gIndex++;
+          if (gIndex >= groups.length) { gIndex = groups.length - 1; forward = false; }
+        } else {
+          gIndex--;
+          if (gIndex < 0) { gIndex = 0; forward = true; }
+        }
+      });
+    }
+
+    function resolveConflicts(groups) {
+      // 檢核組內是否含有黑名單，若有則與下一組交換無衝突組員
+      groups.forEach((group, gIdx) => {
+        for (let i = 0; i < group.length; i++) {
+          const s1 = group[i];
+          const conflictIdx = group.findIndex((s2, idx) => idx !== i && (s1.avoid || []).includes(s2.id));
+          if (conflictIdx !== -1) {
+            // 嘗試與另一組調換
+            const otherGIdx = (gIdx + 1) % groups.length;
+            if (otherGIdx !== gIdx && groups[otherGIdx].length > 0) {
+              const temp = groups[gIdx][conflictIdx];
+              groups[gIdx][conflictIdx] = groups[otherGIdx][0];
+              groups[otherGIdx][0] = temp;
+            }
+          }
+        }
+      });
+    }
+
+    function renderGroups(groups) {
+      const container = document.getElementById("group-result-container");
+      container.innerHTML = "";
+
+      groups.forEach((grp, idx) => {
+        const grpCard = document.createElement("div");
+        grpCard.className = "bg-white p-5 rounded-3xl border border-[#D9CAB3] shadow-sm flex flex-col";
+        
+        let membersHtml = grp.map(m => `
+          <li class="flex justify-between items-center bg-[#FAF8F5] p-2.5 rounded-xl border border-gray-100">
+            <div>
+              <span class="text-xs font-mono text-gray-400">#${m.id}</span>
+              <span class="font-bold text-gray-800 ml-1">${m.name}</span>
+            </div>
+            <div class="space-x-1">
+              <span class="text-xs px-2 py-0.5 rounded-full ${m.gender === '男' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}">${m.gender || '無'}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">${m.level || 'B'}</span>
+            </div>
+          </li>
+        `).join("");
+
+        grpCard.innerHTML = `
+          <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
+            <h4 class="font-bold text-lg text-[#6E7E6A]">第 ${idx + 1} 組</h4>
+            <span class="text-xs text-gray-500 font-semibold">${grp.length} 人</span>
+          </div>
+          <ul class="space-y-2 flex-1">${membersHtml}</ul>
+        `;
+        container.appendChild(grpCard);
+      });
+    }
+
+    // --- 6. 課堂抽籤模組 (抽後剔除不重複) ---
+    let lotteryPool = [];
+    let drawnStudents = [];
+    let isDrawing = false;
+
+    function initLotteryPool() {
+      const active = students.filter(s => !s.absent);
+      // 只保留未中籤者
+      lotteryPool = active.filter(a => !drawnStudents.some(d => d.id === a.id));
+      document.getElementById("lottery-pool-count").textContent = `${lotteryPool.length} 人`;
+      document.getElementById("drawn-count-badge").textContent = `${drawnStudents.length} 人`;
+    }
+
+    function startLotteryDraw() {
+      if (isDrawing) return;
+      if (lotteryPool.length === 0) {
+        alert("所有出席的同學都已經抽過一輪囉！請點擊「重置抽籤名單」開始新回合。");
+        return;
+      }
+
+      isDrawing = true;
+      document.getElementById("lottery-start-btn").disabled = true;
+
+      const seatEl = document.getElementById("lottery-seat");
+      const nameEl = document.getElementById("lottery-name");
+      const card = document.getElementById("lottery-display-card");
+
+      card.classList.add("scale-105");
+
+      let counter = 0;
+      const speed = 60;
+      const totalSteps = 25; // 滾動次數
+
+      const interval = setInterval(() => {
+        const rand = lotteryPool[Math.floor(Math.random() * lotteryPool.length)];
+        seatEl.textContent = `#${rand.id}`;
+        nameEl.textContent = rand.name;
+        AudioEngine.playTick();
+        counter++;
+
+        if (counter >= totalSteps) {
+          clearInterval(interval);
+          // 正式抽出一位並從抽籤池剔除
+          const winnerIndex = Math.floor(Math.random() * lotteryPool.length);
+          const winner = lotteryPool.splice(winnerIndex, 1)[0];
+          drawnStudents.unshift(winner);
+
+          seatEl.textContent = `幸運兒 #${winner.id}`;
+          nameEl.textContent = winner.name;
+          card.classList.remove("scale-105");
+
+          AudioEngine.playCheer();
+          addDrawnList(winner);
+          initLotteryPool();
+
+          isDrawing = false;
+          document.getElementById("lottery-start-btn").disabled = false;
+        }
+      }, speed);
+    }
+
+    function addDrawnList(student) {
+      const container = document.getElementById("drawn-list-container");
+      const item = document.createElement("div");
+      item.className = "flex justify-between items-center p-2.5 bg-gray-50 rounded-xl border border-gray-100 text-sm";
+      item.innerHTML = `
+        <span class="font-bold text-gray-800">#${student.id} ${student.name}</span>
+        <span class="text-xs text-[#8A9A86] font-semibold">已中籤</span>
+      `;
+      container.prepend(item);
+    }
+
+    function resetLotteryPool() {
+      drawnStudents = [];
+      document.getElementById("drawn-list-container").innerHTML = "";
+      document.getElementById("lottery-seat").textContent = "準備";
+      document.getElementById("lottery-name").textContent = "點我抽籤";
+      initLotteryPool();
+    }
+
+    // --- 7. 課堂計時模組 (大字體、閃爍提示、結束蜂鳴) ---
+    let timerMode = "countdown"; // 'countdown' | 'stopwatch'
+    let timerDuration = 300; // 5分鐘
+    let timerRemaining = 300;
+    let timerRunning = false;
+    let timerInterval = null;
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(timerRemaining / 60);
+      const secs = timerRemaining % 60;
+      document.getElementById("timer-display").textContent = 
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      const progress = document.getElementById("timer-progress");
+      if (timerMode === "countdown") {
+        const pct = (timerRemaining / timerDuration) * 100;
+        progress.style.width = `${pct}%`;
+        if (timerRemaining <= 10) {
+          progress.className = "bg-rose-500 h-full transition-all duration-300";
+        } else if (timerRemaining <= 30) {
+          progress.className = "bg-amber-400 h-full transition-all duration-300";
+        } else {
+          progress.className = "bg-[#8A9A86] h-full transition-all duration-300";
+        }
+      } else {
+        progress.style.width = "100%";
+      }
+    }
+
+    function toggleTimer() {
+      const btn = document.getElementById("timer-toggle-btn");
+      if (timerRunning) {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        btn.textContent = "繼續";
+        btn.className = "w-36 py-3.5 bg-[#8A9A86] hover:bg-[#6E7E6A] text-white text-lg font-bold rounded-2xl shadow transition";
+      } else {
+        // 清除結束警報狀態
+        document.getElementById("timer-box").classList.remove("timer-alert");
+        timerRunning = true;
+        btn.textContent = "暫停";
+        btn.className = "w-36 py-3.5 bg-amber-600 hover:bg-amber-700 text-white text-lg font-bold rounded-2xl shadow transition";
+
+        timerInterval = setInterval(() => {
+          if (timerMode === "countdown") {
+            if (timerRemaining > 0) {
+              timerRemaining--;
+              updateTimerDisplay();
+            } else {
+              // 倒數結束：閃爍與音效警報
+              clearInterval(timerInterval);
+              timerRunning = false;
+              btn.textContent = "開始";
+              btn.className = "w-36 py-3.5 bg-[#8A9A86] text-white text-lg font-bold rounded-2xl shadow";
+              document.getElementById("timer-box").classList.add("timer-alert");
+              AudioEngine.playAlarm();
+            }
+          } else {
+            timerRemaining++;
+            updateTimerDisplay();
+          }
+        }, 1000);
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      document.getElementById("timer-box").classList.remove("timer-alert");
+      timerRemaining = timerMode === "countdown" ? timerDuration : 0;
+      document.getElementById("timer-toggle-btn").textContent = "開始";
+      updateTimerDisplay();
+    }
+
+    function setPresetTime(secs) {
+      timerDuration = secs;
+      timerRemaining = secs;
+      resetTimer();
+    }
+
+    function setTimerMode(mode) {
+      timerMode = mode;
+      document.getElementById("mode-countdown").className = mode === 'countdown' ? 
+        "px-5 py-1.5 rounded-lg text-sm font-bold bg-[#8A9A86] text-white" : "px-5 py-1.5 rounded-lg text-sm font-bold text-gray-600 hover:bg-white";
+      document.getElementById("mode-stopwatch").className = mode === 'stopwatch' ? 
+        "px-5 py-1.5 rounded-lg text-sm font-bold bg-[#8A9A86] text-white" : "px-5 py-1.5 rounded-lg text-sm font-bold text-gray-600 hover:bg-white";
+      
+      document.getElementById("timer-presets").style.display = mode === 'countdown' ? 'flex' : 'none';
+      resetTimer();
+    }
+
+    function customTimePrompt() {
+      const input = prompt("請輸入倒數秒數 (例如 90 代表 1分30秒):", "90");
+      if (input && !isNaN(input) && parseInt(input) > 0) {
+        setPresetTime(parseInt(input));
+      }
+    }
+
+    // --- 8. 名單管理與出缺席設定 (Modal) ---
+    function openRosterModal() {
+      renderRosterTable();
+      document.getElementById("roster-modal").classList.remove("hidden");
+    }
+
+    function closeRosterModal() {
+      document.getElementById("roster-modal").classList.add("hidden");
+    }
+
+    function renderRosterTable() {
+      const container = document.getElementById("roster-table-container");
+      container.innerHTML = "";
+
+      students.forEach(s => {
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-gray-200 text-sm";
+        row.innerHTML = `
+          <div class="flex items-center space-x-3">
+            <span class="font-mono text-gray-400 font-bold w-6">#${s.id}</span>
+            <span class="font-bold text-gray-800">${s.name}</span>
+            <span class="text-xs text-gray-500">${s.gender || '未定'} / 程度:${s.level || 'B'}</span>
+            ${s.avoid && s.avoid.length ? `<span class="text-xs bg-rose-50 text-rose-600 px-2 py-0.5 rounded">避開:${s.avoid.join(',')}</span>` : ''}
+          </div>
+          <label class="flex items-center space-x-1.5 cursor-pointer text-xs font-semibold text-rose-600">
+            <input type="checkbox" ${s.absent ? 'checked' : ''} onchange="toggleAbsent(${s.id})" class="rounded text-rose-500 w-4 h-4" />
+            <span>請假缺席</span>
+          </label>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function toggleAbsent(id) {
+      const target = students.find(s => s.id === id);
+      if (target) {
+        target.absent = !target.absent;
+        saveState();
+        initLotteryPool();
+      }
+    }
+
+    function fillSampleRoster() {
+      const sample = "1 王小明 男 A 2\n2 陳小華 女 B 1\n3 李大同 男 A\n4 林美玲 女 B\n5 張家豪 男 C\n6 許雅婷 女 C";
+      document.getElementById("roster-import-text").value = sample;
+    }
+
+    function importRosterFromText() {
+      const textarea = document.getElementById("roster-import-text");
+      let text = textarea.value.trim();
+      
+      // 若文字框為空，防止靜默無反應，提示老師或自動填入範例
+      if (!text) {
+        alert("文字框內目前沒有內容喔！請直接在框內貼上班級名單（或點選「填入範例」測試）。");
+        textarea.focus();
+        return;
+      }
+
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      const newStudents = [];
+
+      lines.forEach((line, index) => {
+        // 支援 Tab（Excel複製貼上）、逗號、空格等多種分隔符號
+        const tokens = line.split(/[\t,\s]+/).filter(t => t.length > 0);
+        if (tokens.length === 0) return;
+
+        let id, name, gender = "男", level = "B", avoid = [];
+
+        // 判斷第一個欄位是否為數字座號
+        const firstAsNum = parseInt(tokens[0], 10);
+        if (!isNaN(firstAsNum) && tokens.length >= 2) {
+          id = firstAsNum;
+          name = tokens[1];
+          if (tokens[2]) gender = (tokens[2].includes("女") || tokens[2].toLowerCase() === "f") ? "女" : "男";
+          if (tokens[3]) level = ["A", "B", "C"].includes(tokens[3].toUpperCase()) ? tokens[3].toUpperCase() : "B";
+          if (tokens[4]) {
+            avoid = tokens[4].split(/[;/、]+/).map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+          }
+        } else {
+          // 若只有名字（例如從Excel只複製姓名欄）
+          id = index + 1;
+          name = tokens[0];
+          if (tokens[1]) gender = (tokens[1].includes("女") || tokens[1].toLowerCase() === "f") ? "女" : "男";
+          if (tokens[2]) level = ["A", "B", "C"].includes(tokens[2].toUpperCase()) ? tokens[2].toUpperCase() : "B";
+          if (tokens[3]) {
+            avoid = tokens[3].split(/[;/、]+/).map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+          }
+        }
+
+        if (name) {
+          newStudents.push({
+            id,
+            name,
+            gender,
+            level,
+            avoid,
+            absent: false,
+            mood: null
+          });
+        }
+      });
+
+      if (newStudents.length > 0) {
+        students = newStudents;
+        drawnStudents = []; // 清空抽籤已抽中名單
+        saveState();
+        renderRosterTable();
+        initLotteryPool();
+        alert(`✅ 成功匯入 ${newStudents.length} 位學生名單！`);
+      } else {
+        alert("無法辨識名單內容，請確認每一行至少包含學生姓名！");
+      }
+    }
+
+    // 初始化載入
+    window.onload = () => {
+      updateRosterBadges();
+      updateTimerDisplay();
+      initLotteryPool();
+    };
+  </script>
+</body>
+</html>
